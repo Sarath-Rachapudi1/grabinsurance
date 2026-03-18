@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GrabOn — Deals &amp; Coupons</title>
+    <!-- Tailwind CSS via CDN — no build step required for demo scope -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              grabon: {
+                green: "#27ae60",
+                navy:  "#1a2744",
+                red:   "#c0392b",
+              },
+            },
+            animation: {
+              slideDown: "slideDown 0.3s ease-out",
+              fadeIn:    "fadeIn 0.2s ease-out",
+            },
+            keyframes: {
+              slideDown: {
+                "0%":   { opacity: "0", transform: "translateY(-8px)" },
+                "100%": { opacity: "1", transform: "translateY(0)" },
+              },
+              fadeIn: {
+                "0%":   { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-900 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

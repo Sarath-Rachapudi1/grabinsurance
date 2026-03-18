@@ -1,0 +1,93 @@
+[
+  {
+    "product_id": "TRAVEL_BASIC_V1",
+    "product_name": "GrabInsure Travel Basic",
+    "tagline": "Cover trip cancellations & lost baggage",
+    "eligible_categories": ["travel"],
+    "premium_paise": 14900,
+    "coverage_amount_paise": 50000000,
+    "coverage_bullets": [
+      "Trip cancellation up to ₹50,000",
+      "Lost or delayed baggage up to ₹15,000",
+      "Emergency medical expenses up to ₹2,00,000",
+      "Flight delay compensation ₹2,000 after 4 hours"
+    ],
+    "exclusions": [
+      "Pre-existing medical conditions",
+      "Adventure sports injuries",
+      "Self-inflicted injuries",
+      "War or political unrest"
+    ],
+    "irdai_reg_number": "IRDAI/HLT/2024/001",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/travel-basic-v1.pdf"
+  },
+  {
+    "product_id": "TRAVEL_PREMIUM_V1",
+    "product_name": "GrabInsure Travel Premium",
+    "tagline": "Full-trip protection with zero deductible",
+    "eligible_categories": ["travel"],
+    "premium_paise": 29900,
+    "coverage_amount_paise": 200000000,
+    "coverage_bullets": [
+      "Trip cancellation up to ₹2,00,000",
+      "Lost baggage up to ₹50,000",
+      "Emergency medical up to ₹10,00,000",
+      "Flight delay ₹5,000 after 2 hours",
+      "Passport loss assistance",
+      "24/7 travel concierge"
+    ],
+    "exclusions": [
+      "Pre-existing conditions (unless declared)",
+      "Self-inflicted harm",
+      "Illegal activities",
+      "War, nuclear risk"
+    ],
+    "irdai_reg_number": "IRDAI/HLT/2024/002",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/travel-premium-v1.pdf"
+  },
+  {
+    "product_id": "GADGET_PROTECT_V1",
+    "product_name": "GrabInsure Gadget Protect",
+    "tagline": "Accidental damage & theft for your new device",
+    "eligible_categories": ["electronics"],
+    "premium_paise": 59900,
+    "coverage_amount_paise": 150000000,
+    "coverage_bullets": [
+      "Accidental damage repair up to ₹1,50,000",
+      "Theft or loss up to ₹1,50,000",
+      "Screen damage with zero deductible",
+      "Liquid damage coverage",
+      "Free pick-up and drop service"
+    ],
+    "exclusions": [
+      "Cosmetic damage (scratches, dents)",
+      "Software issues or data loss",
+      "Damage due to negligence",
+      "Devices older than 6 months at purchase"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/003",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/gadget-protect-v1.pdf"
+  },
+  {
+    "product_id": "PURCHASE_PROTECT_V1",
+    "product_name": "GrabInsure Purchase Protect",
+    "tagline": "Shop worry-free — returns & damage covered",
+    "eligible_categories": ["electronics", "fashion", "lifestyle"],
+    "premium_paise": 4900,
+    "coverage_amount_paise": 10000000,
+    "coverage_bullets": [
+      "Return protection for 30 days",
+      "Purchase damage within 15 days",
+      "Covers up to ₹1,00,000 per item",
+      "No questions asked on first claim"
+    ],
+    "exclusions": [
+      "Perishable items",
+      "Digital downloads or software",
+      "Items over ₹1,00,000 MRP",
+      "Second-hand or refurbished goods"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/004",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/purchase-protect-v1.pdf"
+  }
+]
