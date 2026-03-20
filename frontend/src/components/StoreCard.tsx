@@ -13,9 +13,11 @@ export default function StoreCard({ store }: Props) {
                  text-center hover:shadow-md hover:border-green-400 transition-all group"
     >
       {/* Logo */}
-      <div className={`w-16 h-16 rounded-xl ${store.logoColor} flex items-center justify-center
-                        text-3xl mb-3 shadow-sm`}>
-        {store.logoEmoji}
+      <div className={`w-16 h-16 rounded-xl ${store.logoColor} border border-gray-200 flex items-center justify-center
+                        p-2 mb-3 shadow-sm overflow-hidden`}>
+        <span className={`font-black text-xs text-center leading-tight ${store.logoBrandColor}`}>
+          {store.logoInitials}
+        </span>
       </div>
 
       {/* Name */}

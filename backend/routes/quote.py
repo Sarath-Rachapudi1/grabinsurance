@@ -31,12 +31,20 @@ async def create_quote(
     body: QuoteRequest,
     db: AsyncSession = Depends(get_db),
 ) -> QuoteResponse:
-    # Emit MCP source if applicable
-    if body.user_id.startswith("mcp-"):
+    # Emit MCP source + tool call if applicable
+    is_mcp = body.user_id.startswith("mcp-")
+    if is_mcp:
         await event_bus.emit("request.source", {
             "source":      "mcp",
             "user_id":     body.user_id,
             "description": "Quote request from MCP tool (Claude Desktop → quote_insurance())",
+        })
+        await event_bus.emit("mcp.tool_call", {
+            "tool": "quote_insurance",
+            "arguments": {
+                "recommendation_id": body.recommendation_id,
+                "product_id":        body.product_id,
+            },
         })
 
     # 1. Fetch the recommendation
@@ -91,6 +99,20 @@ async def create_quote(
         "valid_until":         valid_until.isoformat(),
         "recommendation_id":   body.recommendation_id,
     })
+
+    if is_mcp:
+        premium_inr = product["premium_paise"] / 100
+        await event_bus.emit("mcp.tool_result", {
+            "tool": "quote_insurance",
+            "result": {
+                "quote_id":    quote_id,
+                "product_id":  body.product_id,
+                "premium_inr": premium_inr,
+                "gst_inr":     round(premium_inr * 0.18, 2),
+                "total_inr":   round(premium_inr * 1.18, 2),
+                "valid_until": valid_until.isoformat(),
+            },
+        })
 
     return QuoteResponse(
         quote_id=quote_id,

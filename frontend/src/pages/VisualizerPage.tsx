@@ -1,30 +1,6 @@
 /**
  * VisualizerPage — Real-time backend pipeline visualizer.
- *
- * Connects to GET /api/v1/events/stream (Server-Sent Events).
- *
- * Shows:
- *  - REQUEST SOURCE: Browser (GrabOn UI) vs MCP (Claude Desktop tool call)
- *  - AI SCORING: The actual prompt sent to GPT-4o-mini + raw JSON response
- *  - FULL PIPELINE: every step from deal click → policy final
- *
- * All events emitted by the backend:
- *   request.source       → who triggered the pipeline
- *   pipeline.start       → deal context
- *   step.products_found  → eligible products by category
- *   scoring.mode         → always "llm" now (rule-based removed)
- *   llm.prompt_sent      → system prompt + user message sent to Claude
- *   llm.response_raw     → Claude's raw JSON response + token counts
- *   scoring.result       → parsed scores, sorted
- *   scoring.error        → Claude timeout or non-JSON response
- *   recommend.complete   → winner product selected, widget shown
- *   recommend.suppressed → no match or error
- *   step.quote_created   → quote with premium
- *   step.policy_initiated→ policy pending
- *   step.insurer_processing → scenario + latency
- *   step.webhook_firing  → about to call back
- *   step.webhook_received→ callback arrived
- *   step.policy_updated  → final status
+ * Monochrome terminal-style UI with phase grouping, step numbers, and elapsed time.
  */
 import { useState, useEffect, useRef } from "react";
 
@@ -45,27 +21,53 @@ interface StepState {
   payload: Record<string, unknown> | null;
 }
 
-// ── Pipeline steps ────────────────────────────────────────────────────────────
+interface McpToolCall {
+  tool:      string;
+  arguments: Record<string, unknown>;
+  result:    Record<string, unknown> | null;
+  ts:        number;
+}
 
-const STEPS = [
-  { id: "source",       label: "Request Source",        icon: "📡",  desc: "Browser or MCP Claude Desktop" },
-  { id: "deal_click",   label: "Deal Context",          icon: "🛍️",  desc: "Merchant, category, discount" },
-  { id: "products",     label: "Eligible Products",     icon: "📦",  desc: "Products matched to category" },
-  { id: "llm_prompt",   label: "GPT-4o-mini Prompt",   icon: "✍️",  desc: "Prompt sent to GPT-4o-mini" },
-  { id: "llm_response", label: "GPT-4o-mini Response", icon: "🤖",  desc: "Raw JSON from GPT-4o-mini" },
-  { id: "scoring",      label: "Score Rankings",        icon: "📊",  desc: "Products ranked by relevance" },
-  { id: "recommendation",label:"Recommendation",        icon: "💡",  desc: "Best product selected" },
-  { id: "quote",        label: "Quote Generated",       icon: "📋",  desc: "30-min priced quote" },
-  { id: "policy_init",  label: "Policy Initiated",      icon: "⚡",  desc: "Async insurer call started" },
-  { id: "insurer",      label: "Insurer Processing",    icon: "🏦",  desc: "Mock insurer simulating" },
-  { id: "webhook",      label: "Webhook Callback",      icon: "📡",  desc: "Insurer fires async result" },
-  { id: "policy_final", label: "Policy Final",          icon: "🎯",  desc: "Status: issued / declined" },
+// ── Pipeline definition ───────────────────────────────────────────────────────
+
+const PHASES = [
+  {
+    label: "INPUT",
+    steps: [
+      { id: "source",        label: "Request Source",      desc: "Browser or MCP tool call" },
+      { id: "deal_click",    label: "Deal Context",         desc: "Merchant · category · discount" },
+      { id: "products",      label: "Eligible Products",    desc: "Products matched by category" },
+    ],
+  },
+  {
+    label: "AI SCORING",
+    steps: [
+      { id: "llm_prompt",    label: "GPT-4o-mini Prompt",   desc: "System + user message assembled", ai: true },
+      { id: "llm_response",  label: "GPT-4o-mini Response", desc: "Raw JSON scores returned",         ai: true },
+      { id: "scoring",       label: "Score Rankings",       desc: "Products ranked by relevance",     ai: true },
+    ],
+  },
+  {
+    label: "POLICY",
+    steps: [
+      { id: "recommendation",label: "Recommendation",       desc: "Best product selected" },
+      { id: "quote",         label: "Quote Generated",      desc: "30-min priced quote" },
+      { id: "policy_init",   label: "Policy Initiated",     desc: "Async insurer call started" },
+      { id: "insurer",       label: "Insurer Processing",   desc: "Mock insurer simulating scenario" },
+      { id: "webhook",       label: "Webhook Callback",     desc: "Insurer fires async result" },
+      { id: "policy_final",  label: "Policy Final",         desc: "Issued · Declined · Error" },
+    ],
+  },
 ] as const;
 
-type StepId = typeof STEPS[number]["id"];
+type StepId = "source" | "deal_click" | "products" | "llm_prompt" | "llm_response" |
+              "scoring" | "recommendation" | "quote" | "policy_init" | "insurer" |
+              "webhook" | "policy_final";
+
+const ALL_STEPS = PHASES.flatMap((p) => p.steps);
 
 const INITIAL: Record<StepId, StepState> = Object.fromEntries(
-  STEPS.map((s) => [s.id, { status: "idle", detail: null, ts: null, payload: null }])
+  ALL_STEPS.map((s) => [s.id, { status: "idle", detail: null, ts: null, payload: null }])
 ) as Record<StepId, StepState>;
 
 // ── Event → step mapper ───────────────────────────────────────────────────────
@@ -75,23 +77,18 @@ function applyEvent(
   event: PipelineEvent,
 ): Record<StepId, StepState> {
   const next = { ...steps };
-  const d    = event.data;
-
+  const d = event.data;
   const set = (id: StepId, status: StepStatus, detail: string | null) => {
     next[id] = { status, detail, ts: event.ts, payload: d };
   };
 
   switch (event.type) {
-
     case "request.source":
-      // Reset everything on each new request
       (Object.keys(next) as StepId[]).forEach((k) => {
         next[k] = { status: "idle", detail: null, ts: null, payload: null };
       });
-      const isMcp = d.source === "mcp";
-      set("source",
-        "success",
-        isMcp
+      set("source", "success",
+        d.source === "mcp"
           ? "MCP · Claude Desktop → recommend_insurance()"
           : "Browser · User clicked REVEAL PROMO CODE"
       );
@@ -99,7 +96,7 @@ function applyEvent(
 
     case "pipeline.start":
       set("deal_click", "success",
-        `${String(d.merchant)} · ${String(d.category)} · ${String(d.discount_pct)}% off · "${String(d.deal_title)}"`
+        `${String(d.merchant)} · ${String(d.category)} · ${String(d.discount_pct)}% off`
       );
       break;
 
@@ -107,47 +104,43 @@ function applyEvent(
       set("products",
         (d.count as number) > 0 ? "success" : "suppressed",
         (d.count as number) > 0
-          ? `${d.count} found: ${(d.products as string[]).join(", ")}`
-          : `No products mapped to category "${d.category}"`
+          ? `${d.count} products: ${(d.products as string[]).join(", ")}`
+          : `No products for category "${d.category}"`
       );
       break;
 
     case "scoring.mode":
-      set("llm_prompt", "active", "Preparing prompt for GPT-4o-mini…");
+      set("llm_prompt", "active", "Assembling prompt...");
       break;
 
     case "llm.prompt_sent":
-      set("llm_prompt", "success",
-        `${d.products_count} products · model: ${String(d.model)}`
-      );
-      set("llm_response", "active", "Waiting for GPT-4o-mini…");
+      set("llm_prompt", "success", `${d.products_count} products · ${String(d.model)}`);
+      set("llm_response", "active", "Awaiting GPT-4o-mini...");
       break;
 
     case "llm.response_raw":
       set("llm_response", "success",
-        [
-          d.input_tokens  ? `↑ ${d.input_tokens} tokens in` : null,
-          d.output_tokens ? `↓ ${d.output_tokens} tokens out` : null,
-        ].filter(Boolean).join("  ·  ") || "Response received"
+        [d.input_tokens && `↑${d.input_tokens}`, d.output_tokens && `↓${d.output_tokens}`]
+          .filter(Boolean).join("  ") + " tokens" || "Response received"
       );
       break;
 
     case "scoring.result":
       set("scoring", "success",
         (d.scores as { product_id: string; score: number }[])
-          .map((s) => `${s.product_id}: ${s.score}`)
+          .map((s) => `${s.product_id.split("_")[0]}: ${s.score}`)
           .join("  ·  ")
       );
       break;
 
     case "scoring.error":
-      set("llm_response", "error", `GPT error: ${String(d.reason)}`);
-      set("scoring",      "error", "Scoring failed — recommendation suppressed");
+      set("llm_response", "error", `Error: ${String(d.reason).slice(0, 80)}`);
+      set("scoring", "error", "LLM failed — recommendation suppressed");
       break;
 
     case "recommend.complete":
       set("recommendation", "success",
-        `${String(d.product_name)}  ·  score: ${d.score}  ·  ₹${d.premium_inr}`
+        `${String(d.product_name)}  ·  score ${d.score}  ·  ₹${d.premium_inr}`
       );
       break;
 
@@ -158,48 +151,37 @@ function applyEvent(
       break;
 
     case "step.quote_created":
-      set("quote", "success",
-        `₹${d.premium_inr} · coverage ₹${d.coverage_inr} · valid 30 min`
-      );
+      set("quote", "success", `₹${d.premium_inr} · coverage ₹${d.coverage_inr} · 30 min`);
       break;
 
     case "step.policy_initiated":
-      set("policy_init", "active",
-        `Policy ${String(d.policy_id).slice(0, 8)}… → pending`
-      );
+      set("policy_init", "active", `${String(d.policy_id).slice(0, 8)}… → pending`);
       break;
 
     case "step.insurer_processing":
-      set("insurer", "active",
-        `Scenario: ${String(d.scenario)} · ~${d.simulated_latency}s`
-      );
+      set("insurer", "active", `scenario: ${String(d.scenario)}  ~${d.simulated_latency}s`);
       break;
 
     case "step.webhook_firing":
     case "step.webhook_received":
-      set("webhook", "active",
-        `Event: ${String(d.event)} · ref: ${String(d.insurer_ref ?? "—")}`
-      );
+      set("webhook", "active", `event: ${String(d.event)}  ref: ${String(d.insurer_ref ?? "—")}`);
       break;
 
     case "step.webhook_deduplicated":
-      set("webhook", "suppressed",
-        `Duplicate webhook — idempotency dedup (status already: ${d.current_status})`
-      );
+      set("webhook", "suppressed", `Duplicate — dedup (already: ${d.current_status})`);
       break;
 
     case "step.policy_updated": {
       const st = String(d.new_status);
       set("insurer",      "success", "Insurer responded");
-      set("webhook",      "success", `Event: ${st} · ref: ${String(d.insurer_ref ?? "—")}`);
+      set("webhook",      "success", `${st}  ref: ${String(d.insurer_ref ?? "—")}`);
       set("policy_init",  "success", `→ ${st}`);
       set("policy_final", st === "issued" ? "success" : "error",
-        `${st.toUpperCase()}${d.insurer_ref ? ` · ref: ${d.insurer_ref}` : ""}`
+        `${st.toUpperCase()}${d.insurer_ref ? `  ref: ${d.insurer_ref}` : ""}`
       );
       break;
     }
   }
-
   return next;
 }
 
@@ -211,127 +193,228 @@ function fmtTime(ts: number) {
   });
 }
 
-function stepBorder(s: StepStatus) {
-  return {
-    idle:       "border-gray-800 bg-gray-900/50",
-    active:     "border-yellow-500 bg-yellow-900/15",
-    success:    "border-green-600 bg-green-900/15",
-    error:      "border-red-600 bg-red-900/15",
-    suppressed: "border-gray-600 bg-gray-900/30",
-  }[s];
+function fmtElapsed(start: number, end: number) {
+  const ms = Math.round((end - start) * 1000);
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
-function stepDot(s: StepStatus) {
-  return {
-    idle:       "border-gray-700 bg-gray-800",
-    active:     "border-yellow-400 bg-yellow-400 shadow-yellow-400/50 shadow-md animate-pulse",
-    success:    "border-green-500 bg-green-500",
-    error:      "border-red-500 bg-red-500",
-    suppressed: "border-gray-500 bg-gray-600",
-  }[s];
+const STATUS_STYLES: Record<StepStatus, { dot: string; card: string; text: string; tag: string; tagLabel: string }> = {
+  idle:       { dot: "bg-zinc-800 border-zinc-700",                    card: "border-zinc-800/60",       text: "text-zinc-600",  tag: "border-zinc-800 text-zinc-700",       tagLabel: "IDLE" },
+  active:     { dot: "bg-white border-white shadow-white/40 shadow-sm animate-pulse", card: "border-zinc-400 bg-zinc-900/40", text: "text-white",    tag: "border-zinc-300 text-white font-bold", tagLabel: "RUN"  },
+  success:    { dot: "bg-zinc-400 border-zinc-400",                    card: "border-zinc-700",           text: "text-zinc-400",  tag: "border-zinc-600 text-zinc-400",       tagLabel: "OK"   },
+  error:      { dot: "bg-zinc-500 border-zinc-500",                    card: "border-zinc-600 bg-zinc-900/20", text: "text-zinc-400", tag: "border-zinc-500 text-zinc-400",  tagLabel: "ERR"  },
+  suppressed: { dot: "bg-zinc-700 border-zinc-700",                    card: "border-zinc-800/40",        text: "text-zinc-600",  tag: "border-zinc-800 text-zinc-600",       tagLabel: "SKIP" },
+};
+
+function EventTypeBadge({ type }: { type: string }) {
+  // Group by event category — use brightness/contrast not hue
+  const brightness =
+    type.startsWith("llm.")       ? "text-white font-bold" :
+    type.startsWith("scoring")    ? "text-zinc-200" :
+    type.startsWith("step.policy")? "text-zinc-300" :
+    type.startsWith("step.")      ? "text-zinc-400" :
+    type.startsWith("pipeline")   ? "text-zinc-300" :
+    type === "request.source"     ? "text-white" :
+    type.includes("recommend")    ? "text-zinc-300" :
+    "text-zinc-500";
+  return <span className={`font-mono font-bold ${brightness}`}>{type}</span>;
 }
 
-function stepText(s: StepStatus) {
-  return {
-    idle:       "text-gray-600",
-    active:     "text-yellow-300",
-    success:    "text-green-300",
-    error:      "text-red-300",
-    suppressed: "text-gray-500",
-  }[s];
-}
+// ── MCP Tool call panel ───────────────────────────────────────────────────────
 
-function eventColor(type: string) {
-  if (type === "connected")               return "text-blue-400";
-  if (type === "request.source")          return "text-purple-400";
-  if (type.startsWith("pipeline"))        return "text-indigo-400";
-  if (type.startsWith("llm."))            return "text-yellow-300";
-  if (type.startsWith("scoring"))         return "text-yellow-500";
-  if (type.includes("recommend"))         return "text-green-400";
-  if (type.startsWith("step.quote"))      return "text-cyan-400";
-  if (type.startsWith("step.policy"))     return "text-orange-400";
-  if (type.startsWith("step.insurer"))    return "text-pink-400";
-  if (type.startsWith("step.webhook"))    return "text-indigo-400";
-  return "text-gray-400";
-}
+const TOOL_DOCS: Record<string, { desc: string; returns: string }> = {
+  recommend_insurance: {
+    desc: "Recommends an insurance product for a deal context using GPT-4o-mini scoring.",
+    returns: "{ matched, recommendation_id, product_id, product_name, premium_inr, confidence_score }",
+  },
+  quote_insurance: {
+    desc: "Gets a time-bound priced quote from a recommendation. Valid for 30 minutes.",
+    returns: "{ quote_id, product_id, premium_inr, gst_inr, total_inr, valid_until }",
+  },
+};
 
-// ── AI Prompt/Response panel ──────────────────────────────────────────────────
+function McpCallCard({ call, index }: { call: McpToolCall; index: number }) {
+  const [tab, setTab] = useState<"call" | "result">("call");
+  const doc = TOOL_DOCS[call.tool];
 
-function AiDetailPanel({ steps }: { steps: Record<StepId, StepState> }) {
-  const promptState   = steps["llm_prompt"];
-  const responseState = steps["llm_response"];
-  const [showPrompt, setShowPrompt] = useState(false);
+  // Build a Python-style function call string
+  const argStr = Object.entries(call.arguments)
+    .map(([k, v]) => `    ${k}=${JSON.stringify(v)}`)
+    .join(",\n");
+  const callStr = `await ${call.tool}(\n${argStr}\n)`;
 
-  if (promptState.status === "idle") return null;
-
-  const systemPrompt = promptState.payload?.system_prompt as string | undefined;
-  const userMessage  = promptState.payload?.user_message  as string | undefined;
-  const rawResponse  = responseState.payload?.raw_text     as string | undefined;
-
-  // Format the raw response JSON nicely
-  let formattedResponse = rawResponse ?? "";
-  try {
-    formattedResponse = JSON.stringify(JSON.parse(rawResponse ?? ""), null, 2);
-  } catch { /* use raw */ }
+  const resultStr = call.result
+    ? JSON.stringify(call.result, null, 2)
+    : null;
 
   return (
-    <div className="mt-3 rounded-lg border border-yellow-800 bg-yellow-900/10 overflow-hidden">
-      <div className="px-3 py-2 border-b border-yellow-800/50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-yellow-400 text-xs font-bold">🤖 GPT-4o-mini</span>
-          <span className="text-yellow-700 text-xs">gpt-4o-mini</span>
-        </div>
-        <button
-          onClick={() => setShowPrompt((v) => !v)}
-          className="text-[10px] text-yellow-600 hover:text-yellow-400 transition-colors"
-        >
-          {showPrompt ? "Hide prompt ▲" : "Show prompt ▼"}
-        </button>
+    <div className="border border-zinc-800 rounded-lg overflow-hidden text-[11px] font-mono">
+      {/* Card header */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-zinc-950 border-b border-zinc-800">
+        <span className="text-[9px] text-zinc-600 font-bold">#{index + 1}</span>
+        <span className="text-white font-bold">{call.tool}</span>
+        <span className="text-[9px] border border-zinc-700 text-zinc-500 px-1.5 py-0.5 rounded">
+          MCP TOOL
+        </span>
+        {call.result !== null && (
+          <span className="text-[9px] border border-zinc-600 text-zinc-400 px-1.5 py-0.5 rounded ml-auto">
+            {call.result.matched === false ? "NO MATCH" : "RETURNED"}
+          </span>
+        )}
+        {call.result === null && (
+          <span className="text-[9px] border border-zinc-700 text-zinc-600 px-1.5 py-0.5 rounded ml-auto animate-pulse">
+            AWAITING
+          </span>
+        )}
       </div>
 
-      {showPrompt && systemPrompt && (
-        <div className="border-b border-yellow-900/50">
-          <div className="px-3 py-1.5 bg-yellow-900/20">
-            <p className="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-1">
-              System Prompt
-            </p>
-            <pre className="text-[10px] text-yellow-200/70 whitespace-pre-wrap leading-relaxed font-mono">
-              {systemPrompt}
-            </pre>
-          </div>
-          {userMessage && (
-            <div className="px-3 py-1.5">
-              <p className="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-1">
-                User Message
-              </p>
-              <pre className="text-[10px] text-yellow-200/70 whitespace-pre-wrap leading-relaxed font-mono">
-                {userMessage}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Tabs */}
+      <div className="flex border-b border-zinc-900 bg-black">
+        {(["call", "result"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+              tab === t
+                ? "text-white border-b-2 border-white -mb-px"
+                : "text-zinc-600 hover:text-zinc-400"
+            }`}
+          >
+            {t === "call" ? "Tool Call" : "Result"}
+            {t === "result" && call.result === null && (
+              <span className="ml-1 text-zinc-700">...</span>
+            )}
+          </button>
+        ))}
+        {doc && (
+          <span className="ml-auto px-3 py-1.5 text-[9px] text-zinc-700 truncate max-w-[50%]">
+            {doc.desc}
+          </span>
+        )}
+      </div>
 
-      {formattedResponse && (
-        <div className="px-3 py-2">
-          <p className="text-[10px] text-yellow-700 font-bold uppercase tracking-wider mb-1">
-            Claude Response
-          </p>
-          <pre className="text-[10px] text-green-300 font-mono leading-relaxed">
-            {formattedResponse}
-          </pre>
-          {Boolean(responseState.payload?.input_tokens) && (
-            <div className="flex gap-3 mt-1.5">
-              <span className="text-[10px] text-gray-600">
-                ↑ {String(responseState.payload?.input_tokens)} tokens in
-              </span>
-              <span className="text-[10px] text-gray-600">
-                ↓ {String(responseState.payload?.output_tokens)} tokens out
-              </span>
-            </div>
+      {/* Content */}
+      <div className="bg-black">
+        {tab === "call" ? (
+          <div className="p-3">
+            <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-2">Python equivalent</p>
+            <pre className="text-zinc-300 leading-relaxed">{callStr}</pre>
+            {doc && (
+              <p className="text-[9px] text-zinc-700 mt-3 pt-2 border-t border-zinc-900">
+                returns → {doc.returns}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="p-3">
+            {resultStr ? (
+              <>
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-2">Response to Claude Desktop</p>
+                <pre className="text-zinc-300 leading-relaxed">{resultStr}</pre>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 py-3 text-zinc-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                Waiting for backend response...
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function McpPanel({ calls }: { calls: McpToolCall[] }) {
+  if (calls.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-2">
+      {calls.map((call, i) => (
+        <McpCallCard key={`${call.tool}-${i}`} call={call} index={i} />
+      ))}
+    </div>
+  );
+}
+
+// ── AI Prompt / Response panel ────────────────────────────────────────────────
+
+function AiPanel({ steps }: { steps: Record<StepId, StepState> }) {
+  const [tab, setTab] = useState<"prompt" | "response">("response");
+  const prompt   = steps["llm_prompt"];
+  const response = steps["llm_response"];
+
+  if (prompt.status === "idle") return null;
+
+  const systemPrompt = prompt.payload?.system_prompt as string | undefined;
+  const userMessage  = prompt.payload?.user_message  as string | undefined;
+  const rawResponse  = response.payload?.raw_text    as string | undefined;
+
+  let formatted = rawResponse ?? "";
+  try { formatted = JSON.stringify(JSON.parse(rawResponse ?? ""), null, 2); } catch { /**/ }
+
+  const inTok  = response.payload?.input_tokens  as number | undefined;
+  const outTok = response.payload?.output_tokens as number | undefined;
+
+  return (
+    <div className="mt-2 border border-zinc-800 rounded-lg overflow-hidden text-[11px] font-mono">
+      {/* Tabs */}
+      <div className="flex border-b border-zinc-800 bg-zinc-950">
+        {(["prompt", "response"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+              tab === t
+                ? "text-white border-b-2 border-white -mb-px"
+                : "text-zinc-600 hover:text-zinc-400"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-3 px-3">
+          <span className="text-zinc-700">gpt-4o-mini</span>
+          {inTok && outTok && (
+            <span className="text-zinc-700">↑{inTok} ↓{outTok} tokens</span>
           )}
         </div>
-      )}
+      </div>
+
+      {/* Content */}
+      <div className="bg-black max-h-52 overflow-y-auto">
+        {tab === "prompt" ? (
+          <div className="divide-y divide-zinc-900">
+            {systemPrompt && (
+              <div className="p-3">
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1.5">SYSTEM</p>
+                <pre className="text-zinc-500 whitespace-pre-wrap leading-relaxed text-[10px]">{systemPrompt}</pre>
+              </div>
+            )}
+            {userMessage && (
+              <div className="p-3">
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1.5">USER</p>
+                <pre className="text-zinc-400 whitespace-pre-wrap leading-relaxed text-[10px]">{userMessage}</pre>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-3">
+            {formatted ? (
+              <>
+                <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1.5">RESPONSE JSON</p>
+                <pre className="text-zinc-300 leading-relaxed text-[10px]">{formatted}</pre>
+              </>
+            ) : response.status === "active" ? (
+              <div className="flex items-center gap-2 py-4 text-zinc-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                Waiting for GPT-4o-mini...
+              </div>
+            ) : (
+              <span className="text-zinc-700">No response yet</span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -344,10 +427,19 @@ export default function VisualizerPage() {
   const [eventLog,   setEventLog]   = useState<PipelineEvent[]>([]);
   const [eventCount, setEventCount] = useState(0);
   const [lastError,  setLastError]  = useState<string | null>(null);
+  const [pipelineStart, setPipelineStart] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now() / 1000);
+  const [mcpCalls, setMcpCalls] = useState<McpToolCall[]>([]);
+  const logRef = useRef<HTMLDivElement>(null);
+
+  // Tick for elapsed time display
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now() / 1000), 500);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
-    const url = "/api/v1/events/stream";
-    const es  = new EventSource(url);
+    const es = new EventSource("/api/v1/events/stream");
 
     es.onopen = () => { setConnected(true); setLastError(null); };
 
@@ -355,316 +447,439 @@ export default function VisualizerPage() {
       try {
         const event: PipelineEvent = JSON.parse(e.data as string);
         if (event.type === "connected") return;
+
+        if (event.type === "request.source") {
+          setPipelineStart(event.ts);
+          // Reset MCP calls on each new pipeline
+          if (event.data.source === "mcp") {
+            setMcpCalls([]);
+          }
+        }
+
+        if (event.type === "mcp.tool_call") {
+          const d = event.data as { tool: string; arguments: Record<string, unknown> };
+          setMcpCalls((prev) => [
+            ...prev,
+            { tool: d.tool, arguments: d.arguments, result: null, ts: event.ts },
+          ]);
+        }
+
+        if (event.type === "mcp.tool_result") {
+          const d = event.data as { tool: string; result: Record<string, unknown> };
+          setMcpCalls((prev) =>
+            prev.map((c) =>
+              c.tool === d.tool && c.result === null
+                ? { ...c, result: d.result }
+                : c
+            )
+          );
+        }
+
         setEventLog((prev) => [event, ...prev].slice(0, 300));
         setEventCount((n) => n + 1);
         setSteps((prev) => applyEvent(prev, event));
-      } catch { /* malformed */ }
+      } catch { /**/ }
     };
 
     es.onerror = () => {
       setConnected(false);
-      setLastError("Connection lost — browser will retry automatically");
+      setLastError("Connection lost — reconnecting automatically...");
     };
 
     return () => es.close();
   }, []);
 
-  const sourceState = steps["source"];
-  const isMcp       = sourceState.payload?.source === "mcp";
-  const hasSource   = sourceState.status !== "idle";
+  const sourceState  = steps["source"];
+  const isMcp        = sourceState.payload?.source === "mcp";
+  const hasSource    = sourceState.status !== "idle";
+  const completedCount = Object.values(steps).filter((s) => s.status !== "idle").length;
+  const progress     = (completedCount / ALL_STEPS.length) * 100;
+
+  // Assign step numbers across phases
+  let stepNum = 0;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans">
+    <div className="h-screen bg-zinc-950 text-white font-mono flex flex-col overflow-hidden">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🔭</span>
+      <div className="border-b border-zinc-800 px-6 py-3 flex items-center justify-between flex-shrink-0 bg-black">
+        <div className="flex items-center gap-6">
           <div>
-            <h1 className="font-black text-white text-sm leading-none tracking-wide">
-              Backend Pipeline Visualizer
-            </h1>
-            <p className="text-gray-500 text-xs mt-0.5">
-              Real-time SSE · every AI call, MCP request, and policy event
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-600 uppercase tracking-[0.2em] font-bold">
+                GrabInsurance
+              </span>
+              <span className="text-zinc-700">/</span>
+              <span className="text-white text-[10px] uppercase tracking-[0.2em] font-bold">
+                Pipeline Visualizer
+              </span>
+            </div>
+            <p className="text-zinc-600 text-[10px] mt-0.5">
+              SSE stream · GPT-4o-mini scoring · MCP + browser sources
             </p>
+          </div>
+
+          {/* Progress bar */}
+          <div className="hidden lg:flex items-center gap-3">
+            <div className="w-32 h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-white rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-zinc-500">
+              {completedCount}/{ALL_STEPS.length} steps
+            </span>
+            {pipelineStart && (
+              <span className="text-[10px] text-zinc-600">
+                {fmtElapsed(pipelineStart, now)}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Source indicator */}
+        <div className="flex items-center gap-2">
+          {/* Source pill */}
           {hasSource && (
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono ${
               isMcp
-                ? "bg-purple-900/50 border-purple-600 text-purple-300"
-                : "bg-blue-900/50 border-blue-600 text-blue-300"
+                ? "border-zinc-500 text-zinc-300 bg-zinc-900"
+                : "border-zinc-700 text-zinc-400"
             }`}>
-              {isMcp ? "🔌 MCP · Claude Desktop" : "🌐 Browser · GrabOn UI"}
+              {isMcp ? "MCP" : "browser"}
             </div>
           )}
 
-          {/* AI mode */}
-          <div className="flex items-center gap-1.5 bg-yellow-900/30 border border-yellow-800 px-3 py-1 rounded-full">
-            <span className="text-yellow-400 text-xs">🤖</span>
-            <span className="text-yellow-300 text-xs font-semibold">GPT-4o-mini</span>
-            <span className="text-yellow-700 text-xs">LLM only</span>
+          {/* Model */}
+          <div className="border border-zinc-800 px-2.5 py-1 rounded text-[10px] text-zinc-500">
+            gpt-4o-mini
           </div>
 
-          {/* Connection */}
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${
-            connected
-              ? "bg-green-900/40 border-green-700 text-green-400"
-              : "bg-red-900/40 border-red-700 text-red-400"
+          {/* Live indicator */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono ${
+            connected ? "border-zinc-700 text-zinc-400" : "border-zinc-800 text-zinc-700"
           }`}>
-            <span className={`w-2 h-2 rounded-full ${connected ? "bg-green-400 animate-pulse" : "bg-red-500"}`} />
-            {connected ? "Live" : "Reconnecting…"}
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              connected ? "bg-white animate-pulse" : "bg-zinc-700"
+            }`} />
+            {connected ? "live" : "offline"}
           </div>
 
           <button
-            onClick={() => { setEventLog([]); setSteps(INITIAL); setEventCount(0); }}
-            className="text-xs text-gray-500 hover:text-white border border-gray-700
-                       hover:border-gray-500 px-3 py-1 rounded transition-colors"
+            onClick={() => {
+              setEventLog([]);
+              setSteps(INITIAL);
+              setEventCount(0);
+              setPipelineStart(null);
+              setMcpCalls([]);
+            }}
+            className="px-2.5 py-1 rounded border border-zinc-800 text-[10px] text-zinc-600
+                       hover:text-white hover:border-zinc-600 transition-colors"
           >
-            Clear
+            clear
           </button>
         </div>
       </div>
 
       {lastError && (
-        <div className="bg-red-900/20 border-b border-red-900 px-6 py-2 text-red-400 text-xs">
-          ⚠ {lastError}
+        <div className="border-b border-zinc-800 px-6 py-1.5 text-zinc-500 text-[10px] bg-black flex-shrink-0">
+          ! {lastError}
         </div>
       )}
 
-      <div className="flex h-[calc(100vh-57px)]">
+      <div className="flex flex-1 min-h-0">
 
         {/* ── Left: Pipeline ───────────────────────────────────────────────── */}
-        <div className="w-[55%] border-r border-gray-800 overflow-y-auto">
+        <div className="w-[54%] border-r border-zinc-800/60 overflow-y-auto">
           <div className="px-5 py-4">
 
-            {/* MCP explanation banner */}
+            {/* MCP banner */}
             {isMcp && (
-              <div className="mb-4 p-3 rounded-lg bg-purple-900/20 border border-purple-700">
+              <div className="mb-4 px-4 py-3 border border-zinc-700 rounded-lg bg-zinc-900/60">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-purple-400 font-bold text-xs">🔌 MCP Request</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <span className="text-[10px] text-white font-bold uppercase tracking-widest">
+                    MCP Request
+                  </span>
                 </div>
-                <p className="text-xs text-purple-300/80 leading-relaxed">
-                  This request came from <strong>Claude Desktop</strong> using the MCP tool
-                  <code className="mx-1 px-1 bg-purple-900/50 rounded text-purple-200">recommend_insurance()</code>
-                  defined in <code className="px-1 bg-purple-900/50 rounded text-purple-200">mcp-server/server.py</code>.
-                  Claude Desktop called the tool autonomously — the same backend pipeline runs regardless of source.
+                <p className="text-[10px] text-zinc-500 leading-relaxed ml-3.5">
+                  Claude Desktop called{" "}
+                  <code className="text-zinc-300 bg-zinc-800 px-1 rounded">recommend_insurance()</code>
+                  {" "}in{" "}
+                  <code className="text-zinc-300 bg-zinc-800 px-1 rounded">mcp-server/server.py</code>.
+                  {" "}Identical pipeline as browser.
                 </p>
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-                Pipeline Steps
-              </h2>
-              <span className="text-[10px] text-gray-700 font-mono">
-                {Object.values(steps).filter((s) => s.status !== "idle").length}/{STEPS.length} reached
-              </span>
-            </div>
+            {/* Phases */}
+            {PHASES.map((phase) => (
+              <div key={phase.label} className="mb-5">
+                {/* Phase header */}
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-[0.2em]">
+                    {phase.label}
+                  </span>
+                  <div className="flex-1 h-px bg-zinc-800" />
+                </div>
 
-            <div className="space-y-1.5">
-              {STEPS.map((step, idx) => {
-                const state = steps[step.id];
-                const isAiStep = step.id === "llm_prompt" || step.id === "llm_response" || step.id === "scoring";
+                <div className="space-y-1">
+                  {phase.steps.map((step, idxInPhase) => {
+                    stepNum++;
+                    const n     = stepNum;
+                    const state = steps[step.id as StepId];
+                    const s     = STATUS_STYLES[state.status];
+                    const isLast = idxInPhase === phase.steps.length - 1;
 
-                return (
-                  <div key={step.id}>
-                    <div className="flex gap-2.5">
-                      {/* Dot + connector */}
-                      <div className="flex flex-col items-center flex-shrink-0 w-3">
-                        <div className={`w-3 h-3 rounded-full border-2 mt-3 flex-shrink-0 ${stepDot(state.status)}`} />
-                        {idx < STEPS.length - 1 && (
-                          <div className={`w-px flex-1 mt-1 min-h-[8px] ${
-                            state.status !== "idle" ? "bg-gray-700" : "bg-gray-800"
-                          }`} />
-                        )}
-                      </div>
-
-                      {/* Card */}
-                      <div className={`flex-1 rounded-lg border px-3 py-2 mb-0.5 transition-colors ${stepBorder(state.status)} ${
-                        isAiStep ? "border-l-2 border-l-yellow-600" : ""
-                      }`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span className="text-sm flex-shrink-0">{step.icon}</span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`font-semibold text-xs ${
-                                  state.status === "idle" ? "text-gray-600" : "text-white"
-                                }`}>
-                                  {step.label}
-                                </span>
-                                {isAiStep && state.status !== "idle" && (
-                                  <span className="text-[9px] bg-yellow-900/50 border border-yellow-800 text-yellow-400 px-1.5 rounded font-bold">
-                                    AI
-                                  </span>
-                                )}
-                                {step.id === "source" && isMcp && state.status !== "idle" && (
-                                  <span className="text-[9px] bg-purple-900/50 border border-purple-700 text-purple-300 px-1.5 rounded font-bold">
-                                    MCP
-                                  </span>
-                                )}
-                              </div>
-                              {state.status === "idle" ? (
-                                <p className="text-[10px] text-gray-700 leading-tight">{step.desc}</p>
-                              ) : state.detail ? (
-                                <p className={`text-[10px] leading-snug mt-0.5 ${stepText(state.status)}`}>
-                                  {state.detail}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                          {state.ts && (
-                            <span className="text-[9px] text-gray-700 flex-shrink-0 font-mono">
-                              {fmtTime(state.ts)}
+                    return (
+                      <div key={step.id}>
+                        <div className="flex gap-3 items-stretch">
+                          {/* Number + connector */}
+                          <div className="flex flex-col items-center flex-shrink-0 w-7 pt-3">
+                            <span className={`text-[9px] font-mono font-bold w-5 text-right flex-shrink-0 ${
+                              state.status === "idle" ? "text-zinc-700" : "text-zinc-400"
+                            }`}>
+                              {String(n).padStart(2, "0")}
                             </span>
-                          )}
-                        </div>
-
-                        {/* Score badges on scoring step */}
-                        {step.id === "scoring" && Boolean(state.payload?.scores) && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {(state.payload!.scores as { product_id: string; score: number }[]).map((s) => (
-                              <span
-                                key={s.product_id}
-                                className={`text-[10px] font-mono px-2 py-0.5 rounded border font-semibold ${
-                                  s.score >= 0.8
-                                    ? "bg-green-900/40 border-green-700 text-green-300"
-                                    : s.score >= 0.5
-                                      ? "bg-yellow-900/40 border-yellow-700 text-yellow-300"
-                                      : "bg-gray-800 border-gray-700 text-gray-500"
-                                }`}
-                              >
-                                {s.product_id} <strong>{s.score}</strong>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Recommendation chip */}
-                        {step.id === "recommendation" && Boolean(state.payload?.product_id) && (
-                          <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[10px] bg-green-900/40 border border-green-700 text-green-300 px-2 py-0.5 rounded font-mono font-bold">
-                              {String(state.payload!.product_id)}
-                            </span>
-                            {Boolean(state.payload?.langsmith_url) && (
-                              <a
-                                href={String(state.payload!.langsmith_url)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[10px] text-blue-400 hover:underline"
-                              >
-                                🔗 LangSmith trace
-                              </a>
+                            {!isLast && (
+                              <div className={`w-px flex-1 mt-1 min-h-[6px] ${
+                                state.status !== "idle" ? "bg-zinc-700" : "bg-zinc-800/50"
+                              }`} />
                             )}
                           </div>
+
+                          {/* Dot */}
+                          <div className="flex flex-col items-center flex-shrink-0 pt-3.5">
+                            <div className={`w-2 h-2 rounded-full border flex-shrink-0 ${s.dot}`} />
+                            {!isLast && (
+                              <div className={`w-px flex-1 mt-1 min-h-[6px] ${
+                                state.status !== "idle" ? "bg-zinc-700" : "bg-zinc-800/50"
+                              }`} />
+                            )}
+                          </div>
+
+                          {/* Card */}
+                          <div className={`flex-1 rounded-lg border px-3 py-2.5 mb-1 transition-all ${s.card} ${
+                            step.ai ? "border-l-[3px]" : ""
+                          } ${state.status === "active" ? "shadow-sm shadow-white/5" : ""}`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`text-[11px] font-bold ${
+                                    state.status === "idle" ? "text-zinc-600" : "text-white"
+                                  }`}>
+                                    {step.label}
+                                  </span>
+                                  {step.ai && (
+                                    <span className="text-[8px] border border-zinc-700 text-zinc-500 px-1 py-0.5 rounded tracking-wider">
+                                      AI
+                                    </span>
+                                  )}
+                                  {step.id === "source" && isMcp && state.status !== "idle" && (
+                                    <span className="text-[8px] border border-zinc-600 text-zinc-400 px-1 py-0.5 rounded tracking-wider">
+                                      MCP
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-[10px] leading-snug mt-0.5 ${
+                                  state.status === "idle" || !state.detail
+                                    ? "text-zinc-700"
+                                    : s.text
+                                }`}>
+                                  {state.detail ?? step.desc}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {state.ts && pipelineStart && (
+                                  <span className="text-[9px] text-zinc-700">
+                                    +{fmtElapsed(pipelineStart, state.ts)}
+                                  </span>
+                                )}
+                                <span className={`text-[9px] border px-1.5 py-0.5 rounded font-mono ${s.tag}`}>
+                                  {s.tagLabel}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Score badges */}
+                            {step.id === "scoring" && Boolean(state.payload?.scores) && (
+                              <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-zinc-800">
+                                {(state.payload!.scores as { product_id: string; score: number }[])
+                                  .sort((a, b) => b.score - a.score)
+                                  .map((sc, i) => (
+                                    <span
+                                      key={sc.product_id}
+                                      className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                                        i === 0
+                                          ? "border-zinc-500 text-white bg-zinc-800"
+                                          : "border-zinc-800 text-zinc-500"
+                                      }`}
+                                    >
+                                      {i === 0 && <span className="mr-1 text-[8px]">▲</span>}
+                                      {sc.product_id.replace(/_V\d+$/, "")}
+                                      <span className={`ml-1 font-bold ${i === 0 ? "text-white" : "text-zinc-400"}`}>
+                                        {sc.score}
+                                      </span>
+                                    </span>
+                                  ))
+                                }
+                              </div>
+                            )}
+
+                            {/* Recommendation details */}
+                            {step.id === "recommendation" && state.status === "success" && Boolean(state.payload?.product_id) && (
+                              <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-zinc-800">
+                                <span className="text-[10px] border border-zinc-600 text-zinc-300 px-2 py-0.5 rounded font-mono">
+                                  {String(state.payload!.product_id)}
+                                </span>
+                                {Boolean(state.payload?.premium_inr) && (
+                                  <span className="text-[10px] text-zinc-500">
+                                    ₹{String(state.payload!.premium_inr)} premium
+                                  </span>
+                                )}
+                                {Boolean(state.payload?.langsmith_url) && (
+                                  <a
+                                    href={String(state.payload!.langsmith_url)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-zinc-600 hover:text-zinc-300 underline"
+                                  >
+                                    langsmith
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Policy final badge */}
+                            {step.id === "policy_final" && Boolean(state.payload?.new_status) && (
+                              <div className="mt-2 pt-2 border-t border-zinc-800">
+                                <span className={`text-[11px] font-bold font-mono border px-2 py-0.5 rounded ${
+                                  state.payload!.new_status === "issued"
+                                    ? "border-zinc-500 text-white"
+                                    : "border-zinc-700 text-zinc-500"
+                                }`}>
+                                  {String(state.payload!.new_status).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* MCP panel after source step */}
+                        {step.id === "source" && isMcp && (
+                          <div className="ml-10 mb-1">
+                            <McpPanel calls={mcpCalls} />
+                          </div>
                         )}
 
-                        {/* Policy final status */}
-                        {step.id === "policy_final" && Boolean(state.payload?.new_status) && (
-                          <div className="mt-1.5">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                              state.payload!.new_status === "issued"
-                                ? "bg-green-900/50 border border-green-700 text-green-300"
-                                : "bg-red-900/50 border border-red-700 text-red-300"
-                            }`}>
-                              {String(state.payload!.new_status).toUpperCase()}
-                            </span>
+                        {/* AI panel after scoring */}
+                        {step.id === "scoring" && (
+                          <div className="ml-10 mb-1">
+                            <AiPanel steps={steps} />
                           </div>
                         )}
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Architecture reference */}
+            <div className="mt-2 border border-zinc-900 rounded-lg overflow-hidden">
+              <div className="px-4 py-2 border-b border-zinc-900 bg-zinc-950">
+                <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-bold">
+                  Request paths
+                </span>
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-zinc-900">
+                {[
+                  {
+                    title: "Browser",
+                    lines: [
+                      "REVEAL PROMO CODE click",
+                      "useInsurance() hook",
+                      "POST /api/v1/recommend",
+                      "  → GPT-4o-mini scores",
+                      "InsuranceCard shown",
+                      "POST /api/v1/quote",
+                      "POST /api/v1/policy/issue",
+                      "← Webhook callback",
+                    ],
+                  },
+                  {
+                    title: "MCP",
+                    lines: [
+                      "Claude Desktop",
+                      "mcp-server/server.py",
+                      "recommend_insurance()",
+                      "POST /api/v1/recommend",
+                      "  → same GPT-4o-mini",
+                      "quote_insurance()",
+                      "POST /api/v1/quote",
+                      'user_id = "mcp-..."',
+                    ],
+                  },
+                ].map(({ title, lines }) => (
+                  <div key={title} className="p-3">
+                    <p className="text-[9px] text-zinc-500 font-bold mb-2 uppercase tracking-wider">{title}</p>
+                    <div className="space-y-0.5">
+                      {lines.map((l, i) => (
+                        <div key={i} className={`text-[9px] ${l.startsWith("  ") ? "text-zinc-500" : "text-zinc-700"}`}>
+                          {l}
+                        </div>
+                      ))}
                     </div>
-
-                    {/* AI detail panel — appears after the scoring step */}
-                    {step.id === "scoring" && (
-                      <div className="ml-5.5 pl-2">
-                        <AiDetailPanel steps={steps} />
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Architecture diagram */}
-            <div className="mt-5 p-3 bg-gray-900 border border-gray-800 rounded-lg">
-              <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-2">
-                How it works
-              </p>
-              <div className="grid grid-cols-2 gap-x-4 text-[10px] font-mono">
-                <div>
-                  <p className="text-blue-400 font-bold mb-1">🌐 Browser Path</p>
-                  <div className="text-gray-600 space-y-0.5">
-                    <div>CouponCard → REVEAL click</div>
-                    <div>useInsurance hook</div>
-                    <div>POST /api/v1/recommend</div>
-                    <div className="text-yellow-600">  ↓ GPT-4o-mini scores</div>
-                    <div>InsuranceCard widget shown</div>
-                    <div>POST /api/v1/quote</div>
-                    <div>POST /api/v1/policy/issue</div>
-                    <div>← Webhook callback</div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-purple-400 font-bold mb-1">🔌 MCP Path</p>
-                  <div className="text-gray-600 space-y-0.5">
-                    <div>Claude Desktop</div>
-                    <div>mcp-server/server.py</div>
-                    <div>recommend_insurance()</div>
-                    <div>POST /api/v1/recommend</div>
-                    <div className="text-yellow-600">  ↓ same GPT-4o-mini</div>
-                    <div>quote_insurance()</div>
-                    <div>POST /api/v1/quote</div>
-                    <div className="text-purple-600">user_id = "mcp-claude-desktop"</div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
         {/* ── Right: Event log ─────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="px-4 py-2.5 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
-            <h2 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-              Live Event Stream
-            </h2>
-            <span className="text-[10px] text-gray-700 font-mono">{eventCount} events</span>
+        <div className="flex-1 flex flex-col min-w-0 bg-black">
+          {/* Log header */}
+          <div className="px-4 py-2.5 border-b border-zinc-800 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                Live Event Stream
+              </span>
+              {connected && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </div>
+            <span className="text-[10px] text-zinc-700 font-mono">{eventCount} events</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 font-mono text-[10px]">
+          {/* Events */}
+          <div ref={logRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
             {eventLog.length === 0 ? (
-              <div className="text-gray-700 text-center py-16 text-xs">
-                <div className="text-4xl mb-3 opacity-50">🔭</div>
-                <p>Waiting for backend events…</p>
-                <p className="mt-2 text-gray-800">
-                  Reveal a coupon in the GrabOn UI<br/>
-                  or call the MCP tool from Claude Desktop
-                </p>
+              <div className="text-center py-20 text-zinc-700 text-[11px] space-y-2">
+                <div className="font-bold text-zinc-600">Waiting for events</div>
+                <p>Reveal a coupon in the GrabOn UI</p>
+                <p>or call the MCP tool from Claude Desktop</p>
               </div>
             ) : (
               eventLog.map((ev, i) => (
-                <div key={i} className="border-b border-gray-900 pb-2">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-gray-700 w-18 flex-shrink-0">{fmtTime(ev.ts)}</span>
-                    <span className={`font-bold ${eventColor(ev.type)}`}>{ev.type}</span>
+                <div
+                  key={i}
+                  className="border border-zinc-900 rounded-lg p-2.5 hover:border-zinc-700 transition-colors"
+                >
+                  <div className="flex items-baseline gap-3 mb-1">
+                    <span className="text-[9px] text-zinc-700 font-mono flex-shrink-0">{fmtTime(ev.ts)}</span>
+                    <EventTypeBadge type={ev.type} />
                   </div>
-                  <div className="pl-[76px] text-gray-600 space-y-0.5">
+                  <div className="space-y-0.5 ml-[60px]">
                     {Object.entries(ev.data).map(([k, v]) => {
-                      // Truncate long strings (prompts / responses)
                       const raw   = v !== null && typeof v === "object" ? JSON.stringify(v) : String(v ?? "");
-                      const shown = raw.length > 120 ? raw.slice(0, 120) + "…" : raw;
+                      const shown = raw.length > 100 ? raw.slice(0, 100) + "…" : raw;
+                      const isLong = k === "system_prompt" || k === "user_message" || k === "raw_text";
                       return (
-                        <div key={k}>
-                          <span className="text-gray-700">{k}: </span>
-                          <span className={
-                            k === "system_prompt" || k === "user_message" || k === "raw_text"
-                              ? "text-yellow-700"
-                              : "text-gray-500"
-                          }>
+                        <div key={k} className="flex gap-1.5 text-[10px] font-mono">
+                          <span className="text-zinc-700 flex-shrink-0">{k}:</span>
+                          <span className={isLong ? "text-zinc-600 italic" : "text-zinc-500"}>
                             {shown}
                           </span>
                         </div>
@@ -676,22 +891,22 @@ export default function VisualizerPage() {
             )}
           </div>
 
-          {/* Scenario bar */}
-          <div className="border-t border-gray-800 px-4 py-2.5 bg-gray-900/50">
-            <p className="text-[9px] text-gray-700 font-bold uppercase tracking-widest mb-1">
-              Insurer Scenarios (Operator Dashboard)
+          {/* Scenario reference */}
+          <div className="border-t border-zinc-800 px-4 py-2.5 flex-shrink-0">
+            <p className="text-[9px] text-zinc-700 font-bold uppercase tracking-widest mb-1.5">
+              Insurer scenarios  ·  set MOCK_INSURER_SCENARIO in .env
             </p>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
               {[
-                { name: "normal",      color: "text-green-500",  note: "~800ms, 95% success" },
-                { name: "timeout",     color: "text-yellow-500", note: "31s sleep" },
-                { name: "decline",     color: "text-red-400",    note: "instant decline" },
-                { name: "policy_fail", color: "text-purple-400", note: "duplicate webhook → dedup" },
+                { name: "normal",      note: "~800ms · 95% issued" },
+                { name: "timeout",     note: "31s sleep" },
+                { name: "decline",     note: "instant decline" },
+                { name: "policy_fail", note: "dup webhook → dedup" },
               ].map((s) => (
-                <span key={s.name} className="flex items-center gap-1">
-                  <span className={`font-bold ${s.color}`}>{s.name}</span>
-                  <span className="text-gray-800">— {s.note}</span>
-                </span>
+                <div key={s.name} className="flex items-center gap-1.5 text-[9px] font-mono">
+                  <span className="text-zinc-500 font-bold">{s.name}</span>
+                  <span className="text-zinc-800">{s.note}</span>
+                </div>
               ))}
             </div>
           </div>

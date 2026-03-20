@@ -3,8 +3,9 @@
 export interface Store {
   id: string;
   name: string;
-  logoEmoji: string;
-  logoColor: string;        // Tailwind bg class
+  logoInitials: string;     // Short brand abbreviation, e.g. "rB", "MMT"
+  logoColor: string;        // Tailwind bg-* class for logo box
+  logoBrandColor: string;   // Tailwind text-* class for initials text
   primaryCategory: "travel" | "electronics" | "fashion" | "food" | "lifestyle";
   categories: string[];     // For filter sidebar labels
   couponCount: number;

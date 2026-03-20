@@ -28,25 +28,58 @@ MODEL = "gpt-4o-mini"
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """You are an insurance relevance scorer for GrabInsurance, \
-embedded in GrabOn — India's largest coupon platform. Your job is to score \
-how relevant each insurance product is to a given deal.
+embedded in GrabOn — India's largest coupon and deals platform in India.
 
-Rules:
-- Score each product from 0.0 (not relevant) to 1.0 (highly relevant)
-- Consider: deal category, merchant type, user intent, financial risk
-- Return ONLY valid JSON — no markdown, no explanation
-- Format: [{"product_id": "...", "score": 0.0}, ...]"""
+Your task: score how relevant each insurance product is for a customer about \
+to use a specific deal. Return ONLY a valid JSON array — no markdown, no prose.
 
-_USER_TEMPLATE = """Deal:
-- Category: {category}
-- Merchant: {merchant}
-- Title: {title}
-- Discount: {discount}%
+=== SCORING RUBRIC ===
+0.90–1.00  Perfect fit — product is purpose-built for this merchant/category
+           (e.g. TRAVEL_BUS_V1 for a RedBus deal, FOOD_ORDER_V1 for Swiggy)
+0.70–0.89  Strong fit — product covers the core risk of this deal type
+0.50–0.69  Moderate fit — product is relevant but not the ideal choice
+0.30–0.49  Weak fit — tangentially relevant; score only if nothing else fits
+0.00–0.29  Not relevant — product does not address this deal's risk at all
 
-Products to score:
+=== MERCHANT AFFINITY RULES ===
+- RedBus / Abhibus → prefer bus-journey products (TRAVEL_BUS_V1 > TRAVEL_BASIC_V1)
+- MakeMyTrip / EaseMyTrip / Yatra → prefer flight products (FLIGHT_DELAY_V1, TRAVEL_PREMIUM_V1)
+- OYO / Goibibo hotels → prefer hotel cancellation (HOTEL_PROTECT_V1)
+- Swiggy / Zomato → prefer food-order products (FOOD_ORDER_V1 > GROCERY_PROTECT_V1)
+- Blinkit / Instamart / BigBasket → prefer grocery products (GROCERY_PROTECT_V1)
+- Amazon / Flipkart electronics → prefer device protection (GADGET_PROTECT_V1, LAPTOP_PROTECT_V1)
+- Apple / Samsung / OnePlus → prefer premium device (GADGET_PREMIUM_V1 > GADGET_PROTECT_V1)
+- Myntra / Ajio / Nykaa → prefer fashion/beauty products (FASHION_RETURN_V1, BEAUTY_PROTECT_V1)
+- Luxury fashion merchants → prefer LUXURY_FASHION_V1
+- International travel deals → prefer TRAVEL_INTERNATIONAL_V1
+
+=== CATEGORY DEFAULTS (when merchant signal is weak) ===
+- travel       → TRAVEL_BASIC_V1 (0.7), FLIGHT_DELAY_V1 (0.6), HOTEL_PROTECT_V1 (0.55)
+- electronics  → GADGET_PROTECT_V1 (0.75), SCREEN_GUARD_V1 (0.6)
+- fashion      → FASHION_RETURN_V1 (0.75), FASHION_DELIVERY_V1 (0.6)
+- food         → FOOD_ORDER_V1 (0.8), GROCERY_PROTECT_V1 (0.5)
+- lifestyle    → LIFESTYLE_BASIC_V1 (0.65), SUBSCRIPTION_PROTECT_V1 (0.55)
+
+=== CROSS-CATEGORY PRODUCTS ===
+PERSONAL_ACCIDENT_V1 and CYBER_PROTECT_V1 apply to multiple categories — \
+score them 0.4–0.6 when the primary product scores ≥0.7, as a secondary option.
+PURCHASE_PROTECT_V1 is a generic safety net — score 0.3–0.5 if nothing else fits.
+
+=== FORMAT ===
+Return ONLY: [{"product_id": "...", "score": 0.00}, ...]
+Every product in the input must appear in the output. No extra keys. No markdown."""
+
+_USER_TEMPLATE = """=== DEAL ===
+Category : {category}
+Merchant : {merchant}
+Title    : {title}
+Discount : {discount}%
+
+=== PRODUCTS TO SCORE ===
 {products_json}
 
-Return JSON array with product_id and score (0.0-1.0) for each product."""
+Score every product. Return a JSON array — one object per product with \
+"product_id" and "score" (float 0.00–1.00). No markdown, no explanation."""
 
 
 # ── LLM call ──────────────────────────────────────────────────────────────────
@@ -64,10 +97,12 @@ async def _llm_score(
 
     products_summary = [
         {
-            "product_id":   p["product_id"],
-            "product_name": p["product_name"],
-            "tagline":      p["tagline"],
-            "categories":   p["eligible_categories"],
+            "product_id":     p["product_id"],
+            "product_name":   p["product_name"],
+            "tagline":        p["tagline"],
+            "categories":     p["eligible_categories"],
+            "merchant_hints": p.get("merchant_hints", []),
+            "coverage_short": p.get("coverage_bullets", [""])[0] if p.get("coverage_bullets") else "",
         }
         for p in products
     ]
@@ -92,7 +127,7 @@ async def _llm_score(
         model=MODEL,
         api_key=settings.OPENAI_API_KEY,
         temperature=0,
-        max_tokens=512,
+        max_tokens=1024,
     )
 
     messages = [
@@ -134,7 +169,7 @@ async def score_products(
     merchant:      str,
     deal_title:    str,
     discount_pct:  int,
-    timeout:       float = 10.0,
+    timeout:       float = 20.0,
 ) -> tuple[list[tuple[dict, float]], str | None]:
     """
     Score eligible insurance products for a deal using GPT-4o-mini.

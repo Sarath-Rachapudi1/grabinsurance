@@ -7,22 +7,12 @@ import { getPopularCoupons } from "../data/coupons";
 
 const POPULAR_COUPONS = getPopularCoupons(6);
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Travel:       "✈️",
-  Electronics:  "📱",
-  Fashion:      "👗",
-  Food:         "🍔",
-  Lifestyle:    "💄",
-  Beauty:       "💅",
-  Grocery:      "🛒",
-};
-
 const CATEGORIES = [
-  { label: "Travel",      emoji: "✈️",  href: "/?category=travel"      },
-  { label: "Electronics", emoji: "📱",  href: "/?category=electronics"  },
-  { label: "Fashion",     emoji: "👗",  href: "/?category=fashion"      },
-  { label: "Food",        emoji: "🍔",  href: "/?category=food"         },
-  { label: "Lifestyle",   emoji: "💄",  href: "/?category=lifestyle"    },
+  { label: "Travel",      href: "/?category=travel"      },
+  { label: "Electronics", href: "/?category=electronics"  },
+  { label: "Fashion",     href: "/?category=fashion"      },
+  { label: "Food",        href: "/?category=food"         },
+  { label: "Lifestyle",   href: "/?category=lifestyle"    },
 ];
 
 export default function Home() {
@@ -38,12 +28,11 @@ export default function Home() {
           <Link
             key={cat.label}
             to={cat.href}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200
+            className="flex items-center px-4 py-2 rounded-full border border-gray-200
                        bg-white text-sm font-medium text-gray-700 hover:border-green-400
                        hover:text-green-700 whitespace-nowrap transition-colors shadow-sm"
           >
-            <span>{cat.emoji}</span>
-            <span>{cat.label}</span>
+            {cat.label}
           </Link>
         ))}
       </div>

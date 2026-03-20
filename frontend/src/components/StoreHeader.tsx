@@ -41,9 +41,11 @@ export default function StoreHeader({
       {/* Top section: logo + info */}
       <div className="px-6 pt-6 pb-4 flex items-start gap-5">
         {/* Logo */}
-        <div className={`w-20 h-20 rounded-xl ${store.logoColor} flex items-center justify-center
-                          text-4xl flex-shrink-0 shadow-md`}>
-          {store.logoEmoji}
+        <div className={`w-20 h-20 rounded-xl ${store.logoColor} border border-white/20 flex items-center justify-center
+                          p-2 flex-shrink-0 shadow-md overflow-hidden`}>
+          <span className={`font-black text-sm text-center leading-tight ${store.logoBrandColor}`}>
+            {store.logoInitials}
+          </span>
         </div>
 
         {/* Info */}

@@ -1,9 +1,33 @@
 [
   {
+    "product_id": "TRAVEL_BUS_V1",
+    "product_name": "GrabInsure Bus Journey Protect",
+    "tagline": "Accident & delay cover for bus travellers",
+    "eligible_categories": ["travel"],
+    "merchant_hints": ["redbus", "abhibus", "makemytrip", "goibibo"],
+    "premium_paise": 4900,
+    "coverage_amount_paise": 20000000,
+    "coverage_bullets": [
+      "Personal accident cover ₹2,00,000",
+      "Bus delay compensation ₹500 after 2 hours",
+      "Missed connection cover ₹2,000",
+      "Baggage loss up to ₹5,000"
+    ],
+    "exclusions": [
+      "Self-inflicted injuries",
+      "Intoxication at time of travel",
+      "War or civil unrest",
+      "Ticket booked less than 1 hour before travel"
+    ],
+    "irdai_reg_number": "IRDAI/HLT/2024/011",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/travel-bus-v1.pdf"
+  },
+  {
     "product_id": "TRAVEL_BASIC_V1",
     "product_name": "GrabInsure Travel Basic",
     "tagline": "Cover trip cancellations & lost baggage",
     "eligible_categories": ["travel"],
+    "merchant_hints": ["makemytrip", "redbus", "easemytrip", "goibibo"],
     "premium_paise": 14900,
     "coverage_amount_paise": 50000000,
     "coverage_bullets": [
@@ -26,6 +50,7 @@
     "product_name": "GrabInsure Travel Premium",
     "tagline": "Full-trip protection with zero deductible",
     "eligible_categories": ["travel"],
+    "merchant_hints": ["makemytrip", "easemytrip", "goibibo", "cleartrip"],
     "premium_paise": 29900,
     "coverage_amount_paise": 200000000,
     "coverage_bullets": [
@@ -46,10 +71,107 @@
     "policy_wording_url": "https://grabinsurance.example.com/policy/travel-premium-v1.pdf"
   },
   {
+    "product_id": "FLIGHT_DELAY_V1",
+    "product_name": "GrabInsure Flight Guard",
+    "tagline": "Instant payout for delays, cancellations & missed flights",
+    "eligible_categories": ["travel"],
+    "merchant_hints": ["makemytrip", "easemytrip", "goibibo", "indigo", "airindia"],
+    "premium_paise": 9900,
+    "coverage_amount_paise": 30000000,
+    "coverage_bullets": [
+      "Flight delay payout ₹3,000 after 3 hours",
+      "Cancellation reimbursement up to ₹30,000",
+      "Missed connection up to ₹15,000",
+      "Tarmac delay ₹1,000 per hour (max 5 hours)",
+      "Instant parametric payout — no claim filing"
+    ],
+    "exclusions": [
+      "Delays due to passenger fault",
+      "Weather delays under 3 hours",
+      "Charter or private flights",
+      "Delays notified before booking"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/012",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/flight-delay-v1.pdf"
+  },
+  {
+    "product_id": "HOTEL_PROTECT_V1",
+    "product_name": "GrabInsure Hotel Booking Protect",
+    "tagline": "Refund on non-refundable bookings when life happens",
+    "eligible_categories": ["travel"],
+    "merchant_hints": ["makemytrip", "goibibo", "oyo", "airbnb", "booking"],
+    "premium_paise": 7900,
+    "coverage_amount_paise": 25000000,
+    "coverage_bullets": [
+      "Hotel cancellation refund up to ₹25,000",
+      "No-show cover due to illness or emergency",
+      "Early checkout reimbursement up to ₹10,000",
+      "Double-booking protection up to ₹5,000"
+    ],
+    "exclusions": [
+      "Change of mind cancellations",
+      "Bookings already under free cancellation policy",
+      "Hostels and dormitory stays",
+      "Bookings over ₹1,00,000 per night"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/013",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/hotel-protect-v1.pdf"
+  },
+  {
+    "product_id": "TRAVEL_INTERNATIONAL_V1",
+    "product_name": "GrabInsure International Travel",
+    "tagline": "Comprehensive cover for overseas travel",
+    "eligible_categories": ["travel"],
+    "merchant_hints": ["makemytrip", "easemytrip", "goibibo", "cleartrip"],
+    "premium_paise": 49900,
+    "coverage_amount_paise": 500000000,
+    "coverage_bullets": [
+      "Medical & hospitalisation up to ₹50,00,000",
+      "Emergency medical evacuation",
+      "Trip cancellation up to ₹3,00,000",
+      "Baggage loss/delay up to ₹75,000",
+      "Passport & document loss",
+      "Personal liability cover ₹10,00,000",
+      "Adventure sports add-on available"
+    ],
+    "exclusions": [
+      "Travel to war zones (FCDO advisory)",
+      "Undeclared pre-existing conditions",
+      "Elective medical procedures abroad",
+      "Extreme sports without add-on"
+    ],
+    "irdai_reg_number": "IRDAI/HLT/2024/014",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/travel-intl-v1.pdf"
+  },
+  {
+    "product_id": "SCREEN_GUARD_V1",
+    "product_name": "GrabInsure Screen Repair",
+    "tagline": "One cracked screen, zero stress",
+    "eligible_categories": ["electronics"],
+    "merchant_hints": ["amazon", "flipkart", "croma", "reliance digital", "samsung"],
+    "premium_paise": 19900,
+    "coverage_amount_paise": 30000000,
+    "coverage_bullets": [
+      "Screen crack or shatter repair up to ₹30,000",
+      "One claim per policy year",
+      "Free doorstep pick-up and drop",
+      "Repair within 48 hours"
+    ],
+    "exclusions": [
+      "Phones older than 12 months at purchase",
+      "Liquid damage to screen",
+      "Internal display damage without physical impact",
+      "Already cracked screens"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/015",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/screen-guard-v1.pdf"
+  },
+  {
     "product_id": "GADGET_PROTECT_V1",
     "product_name": "GrabInsure Gadget Protect",
     "tagline": "Accidental damage & theft for your new device",
     "eligible_categories": ["electronics"],
+    "merchant_hints": ["amazon", "flipkart", "croma", "vijay sales", "reliance digital"],
     "premium_paise": 59900,
     "coverage_amount_paise": 150000000,
     "coverage_bullets": [
@@ -69,10 +191,61 @@
     "policy_wording_url": "https://grabinsurance.example.com/policy/gadget-protect-v1.pdf"
   },
   {
+    "product_id": "GADGET_PREMIUM_V1",
+    "product_name": "GrabInsure Gadget Premium",
+    "tagline": "Total protection — damage, theft & extended warranty",
+    "eligible_categories": ["electronics"],
+    "merchant_hints": ["amazon", "flipkart", "apple", "samsung", "croma"],
+    "premium_paise": 99900,
+    "coverage_amount_paise": 300000000,
+    "coverage_bullets": [
+      "Accidental & liquid damage up to ₹3,00,000",
+      "Theft with FIR within 24 hours",
+      "Extended warranty for 2 years post manufacturer",
+      "Unlimited screen repairs",
+      "Data backup service (up to 100 GB)",
+      "Loaner device while in repair"
+    ],
+    "exclusions": [
+      "Devices over ₹3,00,000 MRP",
+      "Commercial or business use devices",
+      "Intentional damage",
+      "Devices over 3 months old at purchase date"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/016",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/gadget-premium-v1.pdf"
+  },
+  {
+    "product_id": "LAPTOP_PROTECT_V1",
+    "product_name": "GrabInsure Laptop Shield",
+    "tagline": "Work uninterrupted — full laptop protection",
+    "eligible_categories": ["electronics"],
+    "merchant_hints": ["amazon", "flipkart", "hp", "dell", "lenovo", "croma"],
+    "premium_paise": 79900,
+    "coverage_amount_paise": 200000000,
+    "coverage_bullets": [
+      "Accidental damage up to ₹2,00,000",
+      "Liquid spill damage",
+      "Theft cover with FIR",
+      "Power surge & electrical damage",
+      "Free on-site repair service",
+      "Business data recovery up to 50 GB"
+    ],
+    "exclusions": [
+      "Laptops over ₹2,00,000 MRP",
+      "Software failures or virus damage",
+      "Cosmetic damage only",
+      "Laptops older than 3 months at purchase"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/017",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/laptop-protect-v1.pdf"
+  },
+  {
     "product_id": "PURCHASE_PROTECT_V1",
     "product_name": "GrabInsure Purchase Protect",
     "tagline": "Shop worry-free — returns & damage covered",
     "eligible_categories": ["electronics", "fashion", "lifestyle"],
+    "merchant_hints": ["amazon", "flipkart", "myntra", "ajio", "nykaa"],
     "premium_paise": 4900,
     "coverage_amount_paise": 10000000,
     "coverage_bullets": [
@@ -89,5 +262,265 @@
     ],
     "irdai_reg_number": "IRDAI/MISC/2024/004",
     "policy_wording_url": "https://grabinsurance.example.com/policy/purchase-protect-v1.pdf"
+  },
+  {
+    "product_id": "FASHION_RETURN_V1",
+    "product_name": "GrabInsure Fashion Return Guard",
+    "tagline": "Shop fashion fearlessly — hassle-free returns covered",
+    "eligible_categories": ["fashion"],
+    "merchant_hints": ["myntra", "ajio", "amazon", "flipkart", "nykaa fashion"],
+    "premium_paise": 3900,
+    "coverage_amount_paise": 15000000,
+    "coverage_bullets": [
+      "Extended return window to 60 days",
+      "Return shipping cost reimbursement up to ₹500",
+      "Damaged on delivery — instant refund up to ₹15,000",
+      "Size/fit issues covered with free exchange"
+    ],
+    "exclusions": [
+      "Items with tags removed",
+      "Swimwear, lingerie and custom alterations",
+      "Sale items marked final sale",
+      "Damage due to washing/care instructions ignored"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/018",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/fashion-return-v1.pdf"
+  },
+  {
+    "product_id": "FASHION_DELIVERY_V1",
+    "product_name": "GrabInsure Delivery Protect",
+    "tagline": "Every package arrives right — or you're covered",
+    "eligible_categories": ["fashion", "lifestyle", "electronics"],
+    "merchant_hints": ["myntra", "ajio", "amazon", "flipkart", "meesho"],
+    "premium_paise": 2900,
+    "coverage_amount_paise": 8000000,
+    "coverage_bullets": [
+      "Non-delivery payout up to ₹8,000",
+      "Wrong item delivered — full refund",
+      "Package theft after delivery up to ₹5,000",
+      "Delivery delay compensation ₹200/day (max 5 days)"
+    ],
+    "exclusions": [
+      "Items delivered to wrong address by buyer error",
+      "Digital or downloadable products",
+      "Items over ₹50,000 MRP",
+      "Perishable or food items"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/019",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/fashion-delivery-v1.pdf"
+  },
+  {
+    "product_id": "LUXURY_FASHION_V1",
+    "product_name": "GrabInsure Luxury Purchase Protect",
+    "tagline": "Premium cover for premium fashion",
+    "eligible_categories": ["fashion", "lifestyle"],
+    "merchant_hints": ["myntra", "tata cliq luxury", "ajio luxury", "nykaa fashion"],
+    "premium_paise": 19900,
+    "coverage_amount_paise": 100000000,
+    "coverage_bullets": [
+      "Damage or loss up to ₹1,00,000 per item",
+      "Theft within 30 days of purchase",
+      "Authenticity guarantee — counterfeit refund",
+      "White-glove return service",
+      "Stain or accidental damage within 7 days"
+    ],
+    "exclusions": [
+      "Items under ₹5,000 MRP",
+      "Intentional damage",
+      "Normal wear and tear",
+      "Vintage or pre-owned luxury items"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/020",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/luxury-fashion-v1.pdf"
+  },
+  {
+    "product_id": "FOOD_ORDER_V1",
+    "product_name": "GrabInsure Food Order Protect",
+    "tagline": "Wrong order, cold food, late delivery — all covered",
+    "eligible_categories": ["food"],
+    "merchant_hints": ["swiggy", "zomato", "dunzo", "blinkit", "zepto"],
+    "premium_paise": 1900,
+    "coverage_amount_paise": 2000000,
+    "coverage_bullets": [
+      "Order not delivered — full refund up to ₹2,000",
+      "Wrong items — instant replacement credit",
+      "Late delivery over 60 min — ₹100 credit",
+      "Food quality issue — partial refund up to ₹500",
+      "5 claims per month"
+    ],
+    "exclusions": [
+      "Orders already refunded by platform",
+      "Orders cancelled by buyer",
+      "Alcohol or tobacco products",
+      "Catering/bulk orders over ₹5,000"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/021",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/food-order-v1.pdf"
+  },
+  {
+    "product_id": "GROCERY_PROTECT_V1",
+    "product_name": "GrabInsure Grocery & Instamart Protect",
+    "tagline": "Fresh groceries or your money back",
+    "eligible_categories": ["food"],
+    "merchant_hints": ["swiggy instamart", "blinkit", "zepto", "bigbasket", "dunzo"],
+    "premium_paise": 2900,
+    "coverage_amount_paise": 5000000,
+    "coverage_bullets": [
+      "Spoiled or expired items — instant refund up to ₹5,000/month",
+      "Missing items in order — credit within 2 hours",
+      "Damaged packaging — partial refund",
+      "Temperature-sensitive items spoiled in transit",
+      "10 claims per month, no documentation needed"
+    ],
+    "exclusions": [
+      "Alcohol or tobacco",
+      "Orders not delivered to address on file",
+      "Claims filed after 12 hours of delivery",
+      "Orders over ₹10,000"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/022",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/grocery-protect-v1.pdf"
+  },
+  {
+    "product_id": "LIFESTYLE_BASIC_V1",
+    "product_name": "GrabInsure Lifestyle Basic",
+    "tagline": "Everyday purchases protected",
+    "eligible_categories": ["lifestyle"],
+    "merchant_hints": ["amazon", "flipkart", "tata cliq", "ajio", "pepperfry"],
+    "premium_paise": 4900,
+    "coverage_amount_paise": 15000000,
+    "coverage_bullets": [
+      "Purchase damage within 30 days up to ₹15,000",
+      "Return shipping covered up to ₹300",
+      "Fraud or unauthorized purchase cover ₹5,000",
+      "Product not as described — full refund"
+    ],
+    "exclusions": [
+      "Furniture and large appliances",
+      "Perishable or consumable items",
+      "Used or refurbished products",
+      "Items over ₹50,000 MRP"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/023",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/lifestyle-basic-v1.pdf"
+  },
+  {
+    "product_id": "BEAUTY_PROTECT_V1",
+    "product_name": "GrabInsure Beauty & Wellness Protect",
+    "tagline": "Skin reaction or wrong product — covered",
+    "eligible_categories": ["lifestyle"],
+    "merchant_hints": ["nykaa", "purplle", "amazon", "flipkart", "myntra"],
+    "premium_paise": 3900,
+    "coverage_amount_paise": 10000000,
+    "coverage_bullets": [
+      "Allergic reaction medical expenses up to ₹10,000",
+      "Counterfeit product refund up to full MRP",
+      "Damaged/leaked packaging — instant replacement",
+      "30-day shade/colour return (no questions)",
+      "Expired product delivered — full refund"
+    ],
+    "exclusions": [
+      "Pre-existing skin conditions",
+      "Prescription medicines",
+      "Items over ₹10,000 MRP",
+      "International purchases"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/024",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/beauty-protect-v1.pdf"
+  },
+  {
+    "product_id": "HOME_APPLIANCE_V1",
+    "product_name": "GrabInsure Home Appliance Guard",
+    "tagline": "Kitchen & home appliances — repair or replace",
+    "eligible_categories": ["electronics", "lifestyle"],
+    "merchant_hints": ["amazon", "flipkart", "croma", "vijay sales", "tata cliq"],
+    "premium_paise": 39900,
+    "coverage_amount_paise": 100000000,
+    "coverage_bullets": [
+      "Accidental damage up to ₹1,00,000",
+      "Electrical/power surge damage",
+      "Manufacturing defect post warranty",
+      "Free on-site repair within 72 hours",
+      "Replacement if unrepairable"
+    ],
+    "exclusions": [
+      "Cosmetic damage (scratches, dents)",
+      "Commercial use appliances",
+      "Appliances over 6 months old at purchase",
+      "Pest damage or external contamination"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/025",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/home-appliance-v1.pdf"
+  },
+  {
+    "product_id": "SUBSCRIPTION_PROTECT_V1",
+    "product_name": "GrabInsure Subscription Guard",
+    "tagline": "Never lose money on unused subscriptions",
+    "eligible_categories": ["lifestyle", "electronics"],
+    "merchant_hints": ["amazon", "netflix", "hotstar", "spotify", "google"],
+    "premium_paise": 1900,
+    "coverage_amount_paise": 5000000,
+    "coverage_bullets": [
+      "Unwanted auto-renewal refund up to ₹5,000",
+      "Service outage credit up to ₹500/month",
+      "Accidental double-charge refund",
+      "Price hike after sign-up — exit refund"
+    ],
+    "exclusions": [
+      "Subscriptions cancelled by provider for ToS breach",
+      "Annual plans over ₹10,000",
+      "B2B or business subscriptions",
+      "Crypto or NFT platform subscriptions"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/026",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/subscription-protect-v1.pdf"
+  },
+  {
+    "product_id": "PERSONAL_ACCIDENT_V1",
+    "product_name": "GrabInsure Personal Accident Cover",
+    "tagline": "Financial protection for accidental injuries",
+    "eligible_categories": ["travel", "lifestyle"],
+    "merchant_hints": ["redbus", "makemytrip", "easemytrip"],
+    "premium_paise": 12900,
+    "coverage_amount_paise": 500000000,
+    "coverage_bullets": [
+      "Accidental death benefit ₹50,00,000",
+      "Permanent total disability ₹50,00,000",
+      "Hospitalisation expenses up to ₹1,00,000",
+      "Daily hospital cash ₹1,000/day (max 30 days)",
+      "Education benefit for dependants"
+    ],
+    "exclusions": [
+      "Self-inflicted injuries",
+      "Accidents under influence of alcohol/drugs",
+      "Adventure sports (without add-on)",
+      "War or civil unrest"
+    ],
+    "irdai_reg_number": "IRDAI/HLT/2024/027",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/personal-accident-v1.pdf"
+  },
+  {
+    "product_id": "CYBER_PROTECT_V1",
+    "product_name": "GrabInsure Cyber Fraud Protect",
+    "tagline": "Online fraud & phishing — get your money back",
+    "eligible_categories": ["electronics", "lifestyle"],
+    "merchant_hints": ["amazon", "flipkart", "paytm", "phonepe", "gpay"],
+    "premium_paise": 8900,
+    "coverage_amount_paise": 100000000,
+    "coverage_bullets": [
+      "Online fraud/phishing loss up to ₹1,00,000",
+      "Unauthorised card transactions up to ₹50,000",
+      "Identity theft legal assistance",
+      "SIM swap fraud cover",
+      "24/7 cyber crime helpline"
+    ],
+    "exclusions": [
+      "Losses reported after 72 hours",
+      "Willful sharing of OTP/passwords",
+      "Business or commercial transactions",
+      "Losses under ₹1,000"
+    ],
+    "irdai_reg_number": "IRDAI/MISC/2024/028",
+    "policy_wording_url": "https://grabinsurance.example.com/policy/cyber-protect-v1.pdf"
   }
 ]

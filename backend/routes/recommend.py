@@ -41,6 +41,18 @@ async def recommend(
         ),
     })
 
+    # ── MCP tool call event (what Claude Desktop sent) ─────────────────────────
+    if is_mcp:
+        await event_bus.emit("mcp.tool_call", {
+            "tool": "recommend_insurance",
+            "arguments": {
+                "merchant":      body.merchant,
+                "deal_category": body.deal_category,
+                "deal_title":    body.deal_title,
+                "discount_pct":  body.discount_pct,
+            },
+        })
+
     # ── Step 2: Pipeline starts ────────────────────────────────────────────────
     await event_bus.emit("pipeline.start", {
         "user_id":      body.user_id,
@@ -79,6 +91,14 @@ async def recommend(
             "reason":   f"No insurance products mapped to category '{body.deal_category}'",
             "category": body.deal_category,
         })
+        if is_mcp:
+            await event_bus.emit("mcp.tool_result", {
+                "tool":   "recommend_insurance",
+                "result": {
+                    "matched": False,
+                    "message": f"No insurance product available for {body.deal_category} deals from {body.merchant}.",
+                },
+            })
         return RecommendResponse(
             recommendation_id=rec_id,
             recommendation=None,
@@ -132,6 +152,14 @@ async def recommend(
             "reason":  f"Best score {best_score:.2f} is below threshold 0.30",
             "score":   best_score,
         })
+        if is_mcp:
+            await event_bus.emit("mcp.tool_result", {
+                "tool":   "recommend_insurance",
+                "result": {
+                    "matched": False,
+                    "message": f"No product scored above threshold (best: {best_score:.2f})",
+                },
+            })
         return RecommendResponse(
             recommendation_id=rec_id,
             recommendation=None,
@@ -178,6 +206,21 @@ async def recommend(
         "langsmith_url": langsmith_url,
         "widget_shown": True,
     })
+
+    if is_mcp:
+        await event_bus.emit("mcp.tool_result", {
+            "tool": "recommend_insurance",
+            "result": {
+                "matched":           True,
+                "recommendation_id": rec_id,
+                "product_id":        best_product["product_id"],
+                "product_name":      best_product["product_name"],
+                "tagline":           best_product["tagline"],
+                "premium_inr":       best_product["premium_paise"] / 100,
+                "coverage_bullets":  best_product["coverage_bullets"][:2],
+                "confidence_score":  round(best_score, 3),
+            },
+        })
 
     return RecommendResponse(
         recommendation_id=rec_id,
