@@ -87,40 +87,51 @@ export default function CouponCard({ coupon, compact = false }: Props) {
 
         {/* CTA (right) */}
         <div className="flex-shrink-0">
-          {!revealed ? (
-            /* Split button: green label + blurred code preview */
+          {coupon.ctaLabel === "REVEAL PROMO CODE" ? (
+            /* ── Promo code coupon ── split reveal button → code box */
+            !revealed ? (
+              <button
+                onClick={handleReveal}
+                className="flex items-stretch rounded-lg overflow-hidden shadow-sm
+                           hover:shadow-md transition-shadow group"
+              >
+                <span className="bg-green-600 group-hover:bg-green-700 text-white font-bold
+                                 text-xs px-4 py-3 transition-colors whitespace-nowrap">
+                  {coupon.ctaLabel}
+                </span>
+                <span className="bg-green-600 group-hover:bg-green-700 border-l border-green-500
+                                 text-white text-xs px-3 py-3 transition-colors select-none"
+                      style={{ filter: "blur(3px)", letterSpacing: "0.05em" }}>
+                  ····{coupon.code.slice(-2)}
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-stretch rounded-lg overflow-hidden shadow-sm w-48">
+                <div className="flex-1 border-2 border-dashed border-gray-400 bg-gray-50
+                                flex items-center justify-center px-3 py-2.5">
+                  <code className="font-mono font-bold text-gray-800 text-sm tracking-widest">
+                    {coupon.code}
+                  </code>
+                </div>
+                <button
+                  onClick={handleCopy}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold
+                             px-3 py-2.5 transition-colors whitespace-nowrap"
+                >
+                  {copied ? "✓" : "COPY"}
+                </button>
+              </div>
+            )
+          ) : (
+            /* ── Direct deal (GET DEAL / BOOK NOW) ── single plain button */
             <button
               onClick={handleReveal}
-              className="flex items-stretch rounded-lg overflow-hidden shadow-sm
-                         hover:shadow-md transition-shadow group"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold
+                         text-xs px-5 py-3 rounded-lg transition-colors shadow-sm
+                         hover:shadow-md whitespace-nowrap"
             >
-              <span className="bg-green-600 group-hover:bg-green-700 text-white font-bold
-                               text-xs px-4 py-3 transition-colors whitespace-nowrap">
-                {coupon.ctaLabel}
-              </span>
-              <span className="bg-green-600 group-hover:bg-green-700 border-l border-green-500
-                               text-white text-xs px-3 py-3 transition-colors select-none"
-                    style={{ filter: "blur(3px)", letterSpacing: "0.05em" }}>
-                ····{coupon.code.slice(-2)}
-              </span>
+              {coupon.ctaLabel}
             </button>
-          ) : (
-            /* Code revealed */
-            <div className="flex items-stretch rounded-lg overflow-hidden shadow-sm w-48">
-              <div className="flex-1 border-2 border-dashed border-gray-400 bg-gray-50
-                              flex items-center justify-center px-3 py-2.5">
-                <code className="font-mono font-bold text-gray-800 text-sm tracking-widest">
-                  {coupon.code}
-                </code>
-              </div>
-              <button
-                onClick={handleCopy}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold
-                           px-3 py-2.5 transition-colors whitespace-nowrap"
-              >
-                {copied ? "✓" : "COPY"}
-              </button>
-            </div>
           )}
         </div>
       </div>

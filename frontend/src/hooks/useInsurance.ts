@@ -27,7 +27,7 @@ export function useInsurance(): UseInsuranceResult {
   const fetchInsurance = useCallback((coupon: Coupon) => {
     const userId    = sessionStorage.getItem("grabon_session_id") ?? "anon";
     const controller = new AbortController();
-    const timeoutId  = setTimeout(() => controller.abort(), 3000);
+    const timeoutId  = setTimeout(() => controller.abort(), 25000);
 
     setIsLoading(true);
     setRecommendation(null);
